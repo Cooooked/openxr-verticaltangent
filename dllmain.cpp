@@ -26,21 +26,18 @@
 #endif
 
 namespace {
-    const std::string LayerName = "XR_APILAYER_fommil_widescreen";
+    const std::string LayerName = "XR_APILAYER_cooooked_verttangent";
 
     std::string dllHome;
 
     std::ofstream logStream;
 
-    // we only enable ourselves for specific (simracing) titles
     const std::array<const char*, 1> allowedApps = {
         "iRacingSim64DX11"
     };
-    // has to be checked on every call, because downstream can cache pointers
     bool enabled = false;
 
-    // this is the fallback after reading the config file
-    double targetAspect = 16.0f / 9.0f;
+    double verticalMultiplier = 0.2;
 
     PFN_xrGetInstanceProcAddr nextXrGetInstanceProcAddr = nullptr;
     PFN_xrLocateViews nextXrLocateViews = nullptr;
@@ -80,52 +77,31 @@ namespace {
 
     static void ClampVerticalFov(XrFovf& fov)
     {
-        using d = double;
-
-        d tanL = std::tan(static_cast<d>(fov.angleLeft));   // −
-        d tanR = std::tan(static_cast<d>(fov.angleRight));  // +
-        d tanU = std::tan(static_cast<d>(fov.angleUp));     // +
-        d tanD = std::tan(static_cast<d>(fov.angleDown));   // −
-
-        d widthTan = std::fabs(tanL) + std::fabs(tanR);
-        d heightTan = std::fabs(tanU) + std::fabs(tanD);
-        d aspect = widthTan / heightTan;
-
-        if (aspect >= targetAspect)
-            return;
-
-        d desiredHeightTan = widthTan / targetAspect;
-        d delta = (heightTan - desiredHeightTan) * 0.5;  // cut from each side
-        d maxTrim = std::fabs(tanU) < std::fabs(tanD) ? std::fabs(tanU) : std::fabs(tanD);
-
-        if (delta >= maxTrim)
-            return;
-
-        fov.angleUp = static_cast<float>(std::atan(tanU - delta));
-        fov.angleDown = static_cast<float>(std::atan(tanD + delta));
+        fov.angleUp = static_cast<float>(fov.angleUp * verticalMultiplier);
+        fov.angleDown = static_cast<float>(fov.angleDown * verticalMultiplier);
     }
 
-    XRAPI_ATTR XrResult XRAPI_CALL fommil_widescreen_xrEnumerateViewConfigurationViews(
+    XRAPI_ATTR XrResult XRAPI_CALL cooooked_verttangent_xrEnumerateViewConfigurationViews(
         XrInstance               instance,
         XrSystemId               systemId,
         XrViewConfigurationType  viewConfigurationType,
         uint32_t                 viewCapacityInput,
-        uint32_t*                viewCountOutput,
+        uint32_t* viewCountOutput,
         XrViewConfigurationView* views)
     {
         if (enabled) {
-            DebugLog("--> fommil_widescreen_xrEnumerateViewConfigurationViews\n");
+            DebugLog("--> cooooked_verttangent_xrEnumerateViewConfigurationViews\n");
         }
 
         XrResult res = nextXrEnumerateViewConfigurationViews(instance, systemId,
-                                                             viewConfigurationType, viewCapacityInput,
-                                                             viewCountOutput, views);
+            viewConfigurationType, viewCapacityInput,
+            viewCountOutput, views);
         if (!enabled) {
             return res;
         }
 
         if (res != XR_SUCCESS || views == nullptr) {
-            DebugLog("<-- fommil_widescreen_xrEnumerateViewConfigurationViews EARLY %d\n", res);
+            DebugLog("<-- cooooked_verttangent_xrEnumerateViewConfigurationViews EARLY %d\n", res);
             return res;
         }
 
@@ -133,32 +109,29 @@ namespace {
         XrResult props_result = nextXrGetInstanceProcAddr(instance, "xrGetViewConfigurationProperties", reinterpret_cast<PFN_xrVoidFunction*>(&pfnGetProps));
         if (props_result == XR_SUCCESS) {
             DebugLog("  --> got props ref\n");
-            XrViewConfigurationProperties props{XR_TYPE_VIEW_CONFIGURATION_PROPERTIES};
+            XrViewConfigurationProperties props{ XR_TYPE_VIEW_CONFIGURATION_PROPERTIES };
             if (pfnGetProps(instance, systemId, viewConfigurationType, &props) == XR_SUCCESS &&
                 props.fovMutable == XR_TRUE) {
                 DebugLog("  --> got props, and fovMutable is true\n");
                 for (uint32_t i = 0; i < *viewCountOutput; ++i) {
                     const uint32_t w = views[i].recommendedImageRectWidth;
                     const uint32_t h = views[i].recommendedImageRectHeight;
-                    const double curAspect = static_cast<double>(w) / static_cast<double>(h);
-                    DebugLog("  --> aspect for %u is %.3f\n", i, curAspect);
-                    if (curAspect > targetAspect)
-                        continue;
+                    DebugLog("  --> res for %u is %ux%u\n", i, w, h);
                     const uint32_t newH = static_cast<uint32_t>(
-                                               std::lround(static_cast<double>(w) / targetAspect));
-                    DebugLog("  --> Res clamp: view %u  %ux%u → %ux%u (aspect %.3f)\n",
-                             i, w, h, w, newH, targetAspect);
+                        std::lround(static_cast<double>(h) * verticalMultiplier));
+                    DebugLog("  --> Res clamp: view %u  %ux%u -> %ux%u\n",
+                        i, w, h, w, newH);
                     views[i].recommendedImageRectHeight = std::max<uint32_t>(1u, newH);
                 }
             }
         }
 
-        DebugLog("<-- fommil_widescreen_xrEnumerateViewConfigurationViews %d\n", res);
+        DebugLog("<-- cooooked_verttangent_xrEnumerateViewConfigurationViews %d\n", res);
 
         return res;
     }
 
-    XrResult fommil_widescreen_xrLocateViews(
+    XrResult cooooked_verttangent_xrLocateViews(
         const XrSession session,
         const XrViewLocateInfo* const viewLocateInfo,
         XrViewState* const viewState,
@@ -167,7 +140,7 @@ namespace {
         XrView* const views)
     {
         if (enabled) {
-            DebugLog("--> fommil_widescreen_xrLocateViews\n");
+            DebugLog("--> cooooked_verttangent_xrLocateViews\n");
         }
 
         XrResult result = nextXrLocateViews(session, viewLocateInfo, viewState, viewCapacityInput, viewCountOutput, views);
@@ -181,41 +154,41 @@ namespace {
                 ClampVerticalFov(views[i].fov);
         }
 
-        DebugLog("<-- fommil_widescreen_xrLocateViews %d\n", result);
+        DebugLog("<-- cooooked_verttangent_xrLocateViews %d\n", result);
 
         return result;
     }
 
-    XrResult fommil_widescreen_xrGetInstanceProcAddr(
+    XrResult cooooked_verttangent_xrGetInstanceProcAddr(
         const XrInstance instance,
         const char* const name,
         PFN_xrVoidFunction* const function)
     {
-        DebugLog("--> fommil_widescreen_xrGetInstanceProcAddr \"%s\"\n", name);
+        DebugLog("--> cooooked_verttangent_xrGetInstanceProcAddr \"%s\"\n", name);
         XrResult res = nextXrGetInstanceProcAddr(instance, name, function);
 
         if (strcmp(name, "xrLocateViews") == 0) {
             nextXrLocateViews = reinterpret_cast<PFN_xrLocateViews>(*function);
             *function = reinterpret_cast<PFN_xrVoidFunction>(
-                fommil_widescreen_xrLocateViews);
+                cooooked_verttangent_xrLocateViews);
         }
         else if (strcmp(name, "xrEnumerateViewConfigurationViews") == 0) {
             nextXrEnumerateViewConfigurationViews =
                 reinterpret_cast<PFN_xrEnumerateViewConfigurationViews>(*function);
             *function = reinterpret_cast<PFN_xrVoidFunction>(
-                fommil_widescreen_xrEnumerateViewConfigurationViews);
+                cooooked_verttangent_xrEnumerateViewConfigurationViews);
         }
 
-        DebugLog("<-- fommil_widescreen_xrGetInstanceProcAddr %d\n", res);
+        DebugLog("<-- cooooked_verttangent_xrGetInstanceProcAddr %d\n", res);
         return res;
     }
 
-    XrResult fommil_widescreen_xrCreateApiLayerInstance(
+    XrResult cooooked_verttangent_xrCreateApiLayerInstance(
         const XrInstanceCreateInfo* const instanceCreateInfo,
         const struct XrApiLayerCreateInfo* const apiLayerInfo,
         XrInstance* const instance)
     {
-        DebugLog("--> fommil_widescreen_xrCreateApiLayerInstance\n");
+        DebugLog("--> cooooked_verttangent_xrCreateApiLayerInstance\n");
 
         if (!apiLayerInfo ||
             apiLayerInfo->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_CREATE_INFO ||
@@ -233,10 +206,8 @@ namespace {
             return XR_ERROR_INITIALIZATION_FAILED;
         }
 
-        // Store the next xrGetInstanceProcAddr to resolve the functions no handled by our layer.
         nextXrGetInstanceProcAddr = apiLayerInfo->nextInfo->nextGetInstanceProcAddr;
 
-        // Call the chain to create the instance.
         XrApiLayerCreateInfo chainApiLayerInfo = *apiLayerInfo;
         chainApiLayerInfo.nextInfo = apiLayerInfo->nextInfo->next;
         const XrResult result = apiLayerInfo->nextInfo->nextCreateApiLayerInstance(instanceCreateInfo, &chainApiLayerInfo, instance);
@@ -250,7 +221,7 @@ namespace {
         }
         Log("%s for \"%s\"\n", enabled ? "ENABLED" : "DISABLED", appName);
 
-        DebugLog("<-- fommil_widescreen_xrCreateApiLayerInstance %d\n", result);
+        DebugLog("<-- cooooked_verttangent_xrCreateApiLayerInstance %d\n", result);
         return result;
     }
 
@@ -258,13 +229,12 @@ namespace {
 
 extern "C" {
 
-    // entry point for the loader
-    XrResult __declspec(dllexport) XRAPI_CALL fommil_widescreen_xrNegotiateLoaderApiLayerInterface(
+    XrResult __declspec(dllexport) XRAPI_CALL cooooked_verttangent_xrNegotiateLoaderApiLayerInterface(
         const XrNegotiateLoaderInfo* const loaderInfo,
         const char* const apiLayerName,
         XrNegotiateApiLayerRequest* const apiLayerRequest)
     {
-        DebugLog("--> (early) fommil_widescreen_xrNegotiateLoaderApiLayerInterface\n");
+        DebugLog("--> (early) cooooked_verttangent_xrNegotiateLoaderApiLayerInterface\n");
 
         if (dllHome.empty())
         {
@@ -283,34 +253,34 @@ extern "C" {
 
         if (!logStream.is_open())
         {
-            // some titles (e.g. iRacing) start multiple instances which means our logs get over-written.
-            // since we only really care about preserving the earlier logs in debug builds, we just create
-            // a fresh log for every instance in that case.
 #ifdef _DEBUG
             std::mt19937 rng{ std::random_device{}() };
             std::uniform_int_distribution<uint32_t> dist;
             std::stringstream ss;
             ss << LayerName << "_" << std::hex << dist(rng) << ".log";
-            std::string logFile = (std::filesystem::path(getenv("LOCALAPPDATA")) / ss.str()).string();
+            std::string logFile = (std::filesystem::path(dllHome) / ss.str()).string();
 #else
-            std::string logFile = (std::filesystem::path(getenv("LOCALAPPDATA")) / std::filesystem::path(LayerName + ".log")).string();
+            std::string logFile = (std::filesystem::path(dllHome) / "XR-VertTangent.log").string();
 #endif
             logStream.open(logFile, std::ios_base::ate);
             Log("dllHome is \"%s\"\n", dllHome.c_str());
         }
 
-        std::filesystem::path config = std::filesystem::path(getenv("LOCALAPPDATA")) / std::filesystem::path(LayerName + ".ini");
+        std::filesystem::path config = std::filesystem::path(dllHome) / "XR-VertTangent.ini";
         if (std::filesystem::exists(config)) {
             wchar_t buffer[64];
-            GetPrivateProfileStringW(L"Settings", L"aspect", L"", buffer, 64, config.c_str());
-            double aspect = std::stod(buffer);
-            if (aspect >= 1 && aspect <= 3) {
-                targetAspect = aspect;
+            GetPrivateProfileStringW(L"Settings", L"vertical_multiplier", L"", buffer, 64, config.c_str());
+            try {
+                double val = std::stod(buffer);
+                if (val > 0 && val <= 1.0) {
+                    verticalMultiplier = val;
+                }
             }
+            catch (...) {}
         }
-        Log("target aspect is %f\n", targetAspect);
+        Log("vertical multiplier is %f\n", verticalMultiplier);
 
-        DebugLog("--> fommil_widescreen_xrNegotiateLoaderApiLayerInterface\n");
+        DebugLog("--> cooooked_verttangent_xrNegotiateLoaderApiLayerInterface\n");
 
         if (apiLayerName && apiLayerName != LayerName)
         {
@@ -338,10 +308,10 @@ extern "C" {
 
         apiLayerRequest->layerInterfaceVersion = XR_CURRENT_LOADER_API_LAYER_VERSION;
         apiLayerRequest->layerApiVersion = XR_CURRENT_API_VERSION;
-        apiLayerRequest->getInstanceProcAddr = reinterpret_cast<PFN_xrGetInstanceProcAddr>(fommil_widescreen_xrGetInstanceProcAddr);
-        apiLayerRequest->createApiLayerInstance = reinterpret_cast<PFN_xrCreateApiLayerInstance>(fommil_widescreen_xrCreateApiLayerInstance);
+        apiLayerRequest->getInstanceProcAddr = reinterpret_cast<PFN_xrGetInstanceProcAddr>(cooooked_verttangent_xrGetInstanceProcAddr);
+        apiLayerRequest->createApiLayerInstance = reinterpret_cast<PFN_xrCreateApiLayerInstance>(cooooked_verttangent_xrCreateApiLayerInstance);
 
-        DebugLog("<-- fommil_widescreen_xrNegotiateLoaderApiLayerInterface\n");
+        DebugLog("<-- cooooked_verttangent_xrNegotiateLoaderApiLayerInterface\n");
 
         Log("%s layer is active\n", LayerName.c_str());
 

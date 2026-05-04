@@ -1,45 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="55D4A48D-986D-46FC-8CFA-1C338A064989" Name="OpenXR Widescreen Layer"
-           Language="1033" Version="1.0.1"
-           Manufacturer="fommil"
-           UpgradeCode="0490F452-3EA7-4478-9372-EAE4D32C3666">
+  <Product Id="D1E2F3A4-B5C6-7890-ABCD-EF0123456789" Name="XR-VertTangent"
+           Language="1033" Version="1.0.0"
+           Manufacturer="cooooked"
+           UpgradeCode="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64" />
-
     <MediaTemplate EmbedCab="yes" />
-
-    <Feature Id="Main" Title="Widescreen Layer" Level="1">
+    <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+    <Property Id="ARPCOMMENTS" Value="OpenXR vertical tangent layer for sim racing" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/cooooked/XR-VertTangent" />
+    <Feature Id="Main" Title="XR-VertTangent Layer" Level="1">
       <ComponentRef Id="LayerFiles"/>
       <ComponentRef Id="RegEnable"/>
     </Feature>
-
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
-        <Directory Id="OpenXRDir" Name="OpenXR">
-          <Directory Id="LayersDir" Name="Layers">
-            <Directory Id="WideDir"  Name="Widescreen">
-
-              <Component Id="LayerFiles" Guid="0CECD038-4558-490C-B10C-B79ABDCFD84E" Win64="yes">
-                <File Id="Dll"
-                      Source="..\x64\$(var.Configuration)\XR_APILAYER_fommil_widescreen.dll"/>
-                <File Id="Json"
-                      Source="..\XR_APILAYER_fommil_widescreen.json"/>
-              </Component>
-
-              <Component Id="RegEnable" Guid="C08726CA-E0C6-4B8C-A509-D4EC2E65E9B4" Win64="yes">
-                <RegistryValue Root="HKLM"
-                               Key="Software\Khronos\OpenXR\1\ApiLayers\Implicit"
-                               Name="[WideDir]XR_APILAYER_fommil_widescreen.json"
-                               Type="integer"
-                               Value="0"
-                               Action="write"/>
-              </Component>
-
-            </Directory>
-          </Directory>
+        <Directory Id="InstallDir" Name="XR-VertTangent">
+          <Component Id="LayerFiles" Guid="F1E2D3C4-B5A6-7890-1234-567890ABCDEF" Win64="yes">
+            <File Id="Dll" Source="..\x64\Release\XR_APILAYER_cooooked_verttangent.dll"/>
+            <File Id="Json" Source="..\XR_APILAYER_cooooked_verttangent.json"/>
+            <File Id="Ini" Source="..\XR-VertTangent.ini"/>
+          </Component>
+          <Component Id="RegEnable" Guid="A9B8C7D6-E5F4-3210-FEDC-BA9876543210" Win64="yes">
+            <RegistryValue Root="HKLM"
+                           Key="Software\Khronos\OpenXR\1\ApiLayers\Implicit"
+                           Name="[ProgramFiles64Folder]XR-VertTangent\XR_APILAYER_cooooked_verttangent.json"
+                           Type="integer"
+                           Value="0"
+                           Action="write"/>
+          </Component>
         </Directory>
       </Directory>
     </Directory>
-
   </Product>
 </Wix>

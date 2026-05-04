@@ -6,7 +6,7 @@
     <ProductVersion>3.10</ProductVersion>
     <ProjectGuid>0e8c5b90-10bf-4e6b-a89d-d18d75628dc7</ProjectGuid>
     <SchemaVersion>2.0</SchemaVersion>
-    <OutputName>OpenXR-Widescreen</OutputName>
+    <OutputName>XR-VertTangent-Setup</OutputName>
     <OutputType>Package</OutputType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
