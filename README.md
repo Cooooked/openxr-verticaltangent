@@ -1,4 +1,4 @@
-OpenXR Vertical Tangent
+# OpenXR Vertical Tangent
 This is an OpenXR layer that reduces the vertical field of view by adjusting projection tangents. It removes rendering above and below the useful view to improve performance in sim racing setups.
 Based on:
 
